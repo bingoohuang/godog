@@ -162,8 +162,7 @@ docker:
 dockerinstall:
 	go install -v -x -a -ldflags=${flags} ./...
 
-targz:
+targz: git.commit
 	find . -name ".DS_Store" -delete
-	find . -type f -name '\.*' -print
-	cd .. && rm -f ${app}.tar.gz && tar czvf ${app}.tar.gz --exclude .git --exclude .idea ${app}
-
+	#find . -type f -name '\.*' -print
+	cd .. && rm -f ${app}.tar.gz && tar czf ${app}.tar.gz --exclude .git --exclude .idea  --no-xattrs --no-acls ${app} && ls -hl ${app}.tar.gz

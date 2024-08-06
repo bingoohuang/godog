@@ -3,6 +3,7 @@ package godog
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/big"
@@ -64,10 +65,21 @@ func New(options ...ConfigFn) *Dog {
 	}
 }
 
-var DefaultAction = func(dir string, reasons []any) {
+type ExitFile struct {
+	Time    string       `json:"time"`
+	Reasons []ReasonItem `json:"reasons,omitempty"`
+}
+
+var DefaultAction = func(dir string, reasons []ReasonItem) {
 	log.Printf("program exit by godog, reason: %v", reasons)
+
+	data, _ := json.Marshal(ExitFile{
+		Time:    time.Now().Format(time.RFC3339),
+		Reasons: reasons,
+	})
+
 	name := filepath.Join(dir, "Dog.exit")
-	_ = os.WriteFile(name, []byte(fmt.Sprintf("%v", reasons)), os.ModePerm)
+	_ = os.WriteFile(name, data, os.ModePerm)
 	os.Exit(1)
 }
 
@@ -78,12 +90,12 @@ type State struct {
 }
 
 type Action interface {
-	DoAction(dir string, reasons []any)
+	DoAction(dir string, reasons []ReasonItem)
 }
 
-type ActionFn func(dir string, reasons []any)
+type ActionFn func(dir string, reasons []ReasonItem)
 
-func (f ActionFn) DoAction(dir string, reasons []any) {
+func (f ActionFn) DoAction(dir string, reasons []ReasonItem) {
 	f(dir, reasons)
 }
 
@@ -179,13 +191,28 @@ func (w *Dog) stat(p *process.Process) {
 	}
 }
 
-func (w *Dog) reachTimes() (reasons []any, reached bool) {
+type ReasonItem struct {
+	Reason    string `json:"reason"`
+	Values    []any  `json:"values"`
+	Threshold any    `json:"threshold"`
+}
+
+func (w *Dog) reachTimes() (reasons []ReasonItem, reached bool) {
 	if values, yes := w.RSSState.reached(w.Times, w.Debug); yes {
-		reasons = append(reasons, fmt.Sprintf("RSS 连续 %d 次超标 %d: %v", w.Times, w.RSSThreshold, values))
+		reasons = append(reasons, ReasonItem{
+			Reason:    fmt.Sprintf("RSS 连续 %d 次超标", w.Times),
+			Values:    values,
+			Threshold: w.RSSThreshold,
+		})
 		reached = true
 	}
 	if values, yes := w.CPUState.reached(w.Times, w.Debug); yes {
-		reasons = append(reasons, fmt.Sprintf("CPU 连续 %d 次超标 %f: %v", w.Times, w.CPUPercentThreshold, values))
+		reasons = append(reasons, ReasonItem{
+			Reason:    fmt.Sprintf("CPU 连续 %d 次超标", w.Times),
+			Values:    values,
+			Threshold: w.CPUPercentThreshold,
+		})
+
 		reached = true
 	}
 

@@ -6,14 +6,15 @@ watch self's memory and cpu, check its threshold, and take actions
 
 - build: `make`
 - run: `DOG_DEBUG=1 DOG_INTERVAL=3s DOG_RSS=30MiB DOG_CPU=200 godog` 每 3 秒检查一次, 内存上限 30 MiB, CPU 上限 200%
-- busy: `jj mem=30MiB > Dog.busy` 打满 30 MiB 内存
-- busy: ` jj cores:=3 cpu:=100 > Dog.busy` 打满 3 个核
+- busy: `echo '{"mem":"20MiB"}' > Dog.busy` 打满 30 MiB 内存
+- busy: `echo '{"cores":3,"cpu":100}' > Dog.busy` 打满 3 个核
+- watch: `watch 'ps aux | awk '\''NR==1 || /godog/ && !/awk/'\'''`
 
 ## Usage
 
 一行代码集成
 
-`impott _ "github.com/bingoohuang/godog/autoload"`
+`import _ "github.com/bingoohuang/godog/autoload"`
 
 ## Environment
 
@@ -34,5 +35,7 @@ watch self's memory and cpu, check its threshold, and take actions
 
 Dog.exit 文件内容示例
 
-`[RSS 连续 5 次超标 31457280: [31461376 31469568 31469568 31469568 31469568]]`
+```json
+{"time":"2024-08-06T17:06:20+08:00","reasons":[{"reason":"RSS 连续 5 次超标","values":[21446656,21446656,21446656,21446656,21446656],"threshold":20971520}]}
+```
 

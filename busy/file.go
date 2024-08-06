@@ -3,6 +3,7 @@ package busy
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -35,7 +36,7 @@ func tick(ctx context.Context, dir string, debug bool) {
 	var file File
 	name := filepath.Join(dir, Busyfile)
 	if err := ReadDeleteFile(name, debug, &file); err != nil {
-		if debug {
+		if debug && !errors.Is(err, os.ErrNotExist) {
 			log.Printf("E! reading file %s error: %v", name, err)
 		}
 		return
@@ -73,27 +74,43 @@ type File struct {
 
 func ReadDeleteFile(filename string, debug bool, v any) error {
 	stat, err := os.Stat(filename)
-	if err == nil && !stat.IsDir() {
-		if debug {
-			log.Printf("found file %s", filename)
-		}
-		data, err := os.ReadFile(filename)
-		if err != nil {
-			return fmt.Errorf("read file %s: %w", filename, err)
-		}
+	if err != nil {
+		return err
+	}
+	if stat.IsDir() {
+		return fmt.Errorf("%s is a directory", filename)
+	}
 
-		if debug {
-			log.Printf("Reading file %s: %q", filename, data)
-		}
+	if debug {
+		log.Printf("found file %s", filename)
+	}
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		_ = removeFile(filename, stat)
+		return fmt.Errorf("read file %s: %w", filename, err)
+	}
 
-		if err := json.Unmarshal(data, v); err != nil {
-			return fmt.Errorf("json unmarshal for %s: %w", filename, err)
-		}
+	if debug {
+		log.Printf("Reading file %s: %q", filename, data)
+	}
 
+	if err := json.Unmarshal(data, v); err != nil {
+		_ = removeFile(filename, stat)
+		return fmt.Errorf("json unmarshal for %s: %w", filename, err)
+	}
+
+	if err := os.Remove(filename); err != nil {
+		return fmt.Errorf("remove file %s: %w", filename, err)
+	}
+
+	return nil
+}
+
+func removeFile(filename string, stat os.FileInfo) error {
+	if time.Since(stat.ModTime()) > 10*time.Second {
 		if err := os.Remove(filename); err != nil {
 			return fmt.Errorf("remove file %s: %w", filename, err)
 		}
 	}
-
 	return nil
 }

@@ -36,7 +36,18 @@ watch self's memory and cpu, check its threshold, and take actions
 Dog.exit 文件内容示例
 
 ```json
-{"time":"2024-08-06T17:06:20+08:00","reasons":[{"reason":"RSS 连续 5 次超标","values":[21446656,21446656,21446656,21446656,21446656],"threshold":20971520}]}
+{
+  "pid": 20,
+  "time": "2024-08-06T23:19:21+08:00",
+  "reasons": [
+    {
+      "type": "RSS",
+      "reason": "连续 5 次超标",
+      "values": [31465472, 31477760, 31494144, 31506432, 31506432],
+      "threshold": 31457280
+    }
+  ]
+}
 ```
 
 ##  cgo memory

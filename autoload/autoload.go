@@ -57,7 +57,7 @@ func init() {
 		Dir:                 os.Getenv("DOG_DIR"),
 		Debug:               os.Getenv("DOG_DEBUG") == "1",
 		RSSThreshold:        getEnvSize("DOG_RSS", godog.DefaultRSSThreshold),
-		CPUPercentThreshold: float64(getEnvInt("DOG_CPU", uint64(godog.DefaultCPUThreshold))),
+		CPUPercentThreshold: getEnvInt("DOG_CPU", uint64(godog.DefaultCPUThreshold)),
 		Interval:            getEnvDuration("DOG_INTERVAL", godog.DefaultInterval),
 		Jitter:              getEnvDuration("DOG_JITTER", godog.DefaultJitter),
 		Times:               int(getEnvInt("DOG_TIMES", godog.DefaultTimes)),

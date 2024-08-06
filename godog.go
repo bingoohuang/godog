@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -19,8 +20,7 @@ import (
 type Dog struct {
 	*Config
 
-	RSSState *thresholdState
-	CPUState *thresholdState
+	States []*thresholdState
 }
 
 const (
@@ -30,12 +30,12 @@ const (
 	DefaultJitter       = 10 * time.Second
 )
 
-var DefaultCPUThreshold = 66 * runtime.NumCPU()
+var DefaultCPUThreshold = uint64(66 * runtime.NumCPU())
 
 func New(options ...ConfigFn) *Dog {
 	c := &Config{
 		RSSThreshold:        DefaultRSSThreshold,
-		CPUPercentThreshold: float64(DefaultCPUThreshold),
+		CPUPercentThreshold: DefaultCPUThreshold,
 		Interval:            DefaultInterval,
 		Times:               DefaultTimes, // 连续5次
 		Jitter:              DefaultJitter,
@@ -57,23 +57,31 @@ func New(options ...ConfigFn) *Dog {
 		c.Action = ActionFn(DefaultAction)
 	}
 
-	return &Dog{
+	d := &Dog{
 		Config: c,
-
-		RSSState: newThresholdState("RSS"),
-		CPUState: newThresholdState("CPU"),
 	}
+
+	if c.RSSThreshold > 0 {
+		d.States = append(d.States, newThresholdState("RSS", c.RSSThreshold, d.statRSS))
+	}
+	if c.CPUPercentThreshold > 0 {
+		d.States = append(d.States, newThresholdState("CPU", c.CPUPercentThreshold, d.statCPU))
+	}
+
+	return d
 }
 
 type ExitFile struct {
+	Pid     int          `json:"pid"`
 	Time    string       `json:"time"`
-	Reasons []ReasonItem `json:"reasons,omitempty"`
+	Reasons []ReasonItem `json:"reasons"`
 }
 
-var DefaultAction = func(dir string, reasons []ReasonItem) {
+var DefaultAction = func(dir string, debug bool, reasons []ReasonItem) {
 	log.Printf("program exit by godog, reason: %v", reasons)
 
 	data, _ := json.Marshal(ExitFile{
+		Pid:     os.Getgid(),
 		Time:    time.Now().Format(time.RFC3339),
 		Reasons: reasons,
 	})
@@ -90,13 +98,13 @@ type State struct {
 }
 
 type Action interface {
-	DoAction(dir string, reasons []ReasonItem)
+	DoAction(dir string, debug bool, reasons []ReasonItem)
 }
 
-type ActionFn func(dir string, reasons []ReasonItem)
+type ActionFn func(dir string, debug bool, reasons []ReasonItem)
 
-func (f ActionFn) DoAction(dir string, reasons []ReasonItem) {
-	f(dir, reasons)
+func (f ActionFn) DoAction(dir string, debug bool, reasons []ReasonItem) {
+	f(dir, debug, reasons)
 }
 
 func (w *Dog) Watch(ctx context.Context) error {
@@ -114,7 +122,7 @@ func (w *Dog) Watch(ctx context.Context) error {
 				log.Printf("godo reach times: %v", reasons)
 			}
 
-			w.Action.DoAction(w.Dir, reasons)
+			w.Action.DoAction(w.Dir, w.Debug, reasons)
 		}
 
 		return nil
@@ -150,70 +158,69 @@ func tick(ctx context.Context, interval, jitter time.Duration, f func() error) e
 	return ctx.Err()
 }
 
+type statFn func(p *process.Process, state *thresholdState) (debugMessage string)
+
 func (w *Dog) stat(p *process.Process) {
-
-	var debugMessage string
-	if w.RSSThreshold > 0 {
-		// 获取内存信息
-		memInfo, err1 := p.MemoryInfo()
-		if err1 == nil {
-			rss := memInfo.RSS // 常驻集大小，即实际使用的物理内存
-
-			if w.RSSThreshold > 0 {
-				w.RSSState.setReached(rss > w.RSSThreshold, rss)
-			}
-			if w.Debug {
-				debugMessage += fmt.Sprintf("current RSS: %s", humanize.IBytes(rss))
-			}
-		} else if w.Debug {
-			log.Printf("E! get memory %d error: %v", p.Pid, err1)
+	var debugMessages []string
+	for _, state := range w.States {
+		if msg := state.statFn(p, state); msg != "" {
+			debugMessages = append(debugMessages, msg)
 		}
 	}
 
-	if w.CPUPercentThreshold > 0 {
-		// 获取CPU使用情况
-		cpuPercent, err := p.CPUPercent()
-		if err == nil {
-			w.CPUState.setReached(cpuPercent > w.CPUPercentThreshold, cpuPercent)
-			if w.Debug {
-				if debugMessage != "" {
-					debugMessage += ", "
-				}
-				debugMessage += fmt.Sprintf("CPU: %f", cpuPercent)
-			}
-		} else if w.Debug {
-			log.Printf("E! get cpu percent %d error: %v", p.Pid, err)
-		}
-	}
-
-	if debugMessage != "" {
-		log.Println(debugMessage)
+	if len(debugMessages) > 0 {
+		log.Printf("%s", strings.Join(debugMessages, ", "))
 	}
 }
 
+func (w *Dog) statRSS(p *process.Process, state *thresholdState) (debugMessage string) {
+	// 获取内存信息
+	if memInfo, err := p.MemoryInfo(); err == nil {
+		rss := memInfo.RSS // 常驻集大小，即实际使用的物理内存
+		state.setReached(rss > w.RSSThreshold, rss)
+
+		if w.Debug {
+			debugMessage = fmt.Sprintf("current RSS: %s", humanize.IBytes(rss))
+		}
+	} else if w.Debug {
+		log.Printf("E! get memory %d error: %v", p.Pid, err)
+	}
+
+	return
+}
+
+func (w *Dog) statCPU(p *process.Process, state *thresholdState) (debugMessage string) {
+	// 获取CPU使用情况
+	if cpuPercent, err := p.CPUPercent(); err == nil {
+		state.setReached(cpuPercent > float64(state.Threshold), cpuPercent)
+		if w.Debug {
+			debugMessage = fmt.Sprintf("CPU: %f", cpuPercent)
+		}
+	} else if w.Debug {
+		log.Printf("E! get cpu percent %d error: %v", p.Pid, err)
+	}
+
+	return
+}
+
 type ReasonItem struct {
+	Type      string `json:"type"`
 	Reason    string `json:"reason"`
 	Values    []any  `json:"values"`
 	Threshold any    `json:"threshold"`
 }
 
 func (w *Dog) reachTimes() (reasons []ReasonItem, reached bool) {
-	if values, yes := w.RSSState.reached(w.Times, w.Debug); yes {
-		reasons = append(reasons, ReasonItem{
-			Reason:    fmt.Sprintf("RSS 连续 %d 次超标", w.Times),
-			Values:    values,
-			Threshold: w.RSSThreshold,
-		})
-		reached = true
-	}
-	if values, yes := w.CPUState.reached(w.Times, w.Debug); yes {
-		reasons = append(reasons, ReasonItem{
-			Reason:    fmt.Sprintf("CPU 连续 %d 次超标", w.Times),
-			Values:    values,
-			Threshold: w.CPUPercentThreshold,
-		})
-
-		reached = true
+	for _, state := range w.States {
+		if values, yes := state.reached(w.Times, w.Debug); yes {
+			reasons = append(reasons, ReasonItem{
+				Type:      state.Type,
+				Reason:    fmt.Sprintf("连续 %d 次超标", w.Times),
+				Values:    values,
+				Threshold: state.Threshold,
+			})
+			reached = true
+		}
 	}
 
 	return reasons, reached
@@ -226,7 +233,7 @@ type Config struct {
 	RSSThreshold uint64
 
 	// CPUPercentThreshold 上限
-	CPUPercentThreshold float64
+	CPUPercentThreshold uint64
 	// Interval 检查间隔
 	Interval time.Duration
 	// Jitter 间隔时间附加随机抖动
@@ -262,7 +269,7 @@ func WithRSSThreshold(threshold uint64) ConfigFn {
 	}
 }
 
-func WithCPUPercentThreshold(threshold float64) ConfigFn {
+func WithCPUPercentThreshold(threshold uint64) ConfigFn {
 	return func(c *Config) {
 		c.CPUPercentThreshold = threshold
 	}
@@ -281,20 +288,34 @@ func WithTimes(times int) ConfigFn {
 	}
 }
 
-type thresholdState struct {
-	Name   string
-	Values []any
+type stater interface {
+	Stat(p *process.Process)
 }
 
-func newThresholdState(name string) *thresholdState {
+type thresholdState struct {
+	Type      string
+	Threshold uint64
+	Values    []any
+
+	statFn
+}
+
+func (t *thresholdState) Stat(p *process.Process) {
+
+}
+
+func newThresholdState(typ string, threshold uint64, fn statFn) *thresholdState {
 	return &thresholdState{
-		Name: name,
+		Type:      typ,
+		Threshold: threshold,
+
+		statFn: fn,
 	}
 }
 
 func (t *thresholdState) reached(maxTimes int, debug bool) (values []any, reached bool) {
 	if debug && len(t.Values) > 0 {
-		log.Printf("current %s thresholdState: %v", t.Name, t.Values)
+		log.Printf("current %s thresholdState: %v", t.Type, t.Values)
 	}
 
 	reached = len(t.Values) >= maxTimes

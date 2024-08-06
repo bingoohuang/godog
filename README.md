@@ -50,6 +50,27 @@ Dog.exit 文件内容示例
 }
 ```
 
+```json
+{
+  "pid": 20,
+  "time": "2024-08-06T23:27:16+08:00",
+  "reasons": [
+    {
+      "type": "CPU",
+      "reason": "连续 5 次超标",
+      "values": [
+        202.0394459819142,
+        202.2048474219557,
+        204.30882370734318,
+        207.01643571809782,
+        213.31721391847765
+      ],
+      "threshold": 200
+    }
+  ]
+}
+```
+
 ##  cgo memory
 
 1. test cgo memory malloc `DOG_DEBUG=1 DOG_INTERVAL=3s DOG_RSS=20MiB DOG_CPU=20 godog -cgo-mem 20MiB`

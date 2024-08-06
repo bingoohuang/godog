@@ -39,3 +39,6 @@ Dog.exit 文件内容示例
 {"time":"2024-08-06T17:06:20+08:00","reasons":[{"reason":"RSS 连续 5 次超标","values":[21446656,21446656,21446656,21446656,21446656],"threshold":20971520}]}
 ```
 
+##  cgo memory
+
+1. test cgo memory malloc `DOG_DEBUG=1 DOG_INTERVAL=3s DOG_RSS=20MiB DOG_CPU=20 godog -cgo-mem 20MiB`

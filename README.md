@@ -5,10 +5,11 @@ watch self's memory and cpu, check its threshold, and take actions
 ## Sample
 
 - build: `make`
-- run: `DOG_DEBUG=1 DOG_INTERVAL=3s DOG_RSS=30MiB DOG_CPU=200 godog` 每 3 秒检查一次, 内存上限 30 MiB, CPU 上限 200%
+- run: `DOG_DEBUG=1 DOG_INTERVAL=3s DOG_RSS=20MiB DOG_CPU=60 godog` 每 3 秒检查一次, 内存上限 30 MiB, CPU 上限 200%
 - busy: `echo '{"mem":"20MiB"}' > Dog.busy` 打满 30 MiB 内存
 - busy: `echo '{"cores":3,"cpu":100}' > Dog.busy` 打满 3 个核
 - watch: `watch 'ps aux | awk '\''NR==1 || /godog/ && !/awk/'\'''`
+- pprofile: `go tool pprof -http=:8080 Dog.xxx.prof`
 
 ## Usage
 
@@ -38,13 +39,14 @@ Dog.exit 文件内容示例
 ```json
 {
   "pid": 20,
-  "time": "2024-08-06T23:19:21+08:00",
+  "time": "2024-08-07T09:27:35+08:00",
   "reasons": [
     {
       "type": "RSS",
       "reason": "连续 5 次超标",
-      "values": [31465472, 31477760, 31494144, 31506432, 31506432],
-      "threshold": 31457280
+      "values": [20975616, 20996096, 20996096, 20996096, 21000192],
+      "threshold": 20971520,
+      "profile": "Dog.mem.88251.prof"
     }
   ]
 }
@@ -53,19 +55,14 @@ Dog.exit 文件内容示例
 ```json
 {
   "pid": 20,
-  "time": "2024-08-06T23:27:16+08:00",
+  "time": "2024-08-07T09:30:11+08:00",
   "reasons": [
     {
       "type": "CPU",
       "reason": "连续 5 次超标",
-      "values": [
-        202.0394459819142,
-        202.2048474219557,
-        204.30882370734318,
-        207.01643571809782,
-        213.31721391847765
-      ],
-      "threshold": 200
+      "values": [61, 61, 67, 69, 71],
+      "threshold": 60,
+      "profile": "Dog.cpu.88344.prof"
     }
   ]
 }

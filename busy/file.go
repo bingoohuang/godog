@@ -30,11 +30,11 @@ func Watch(ctx context.Context, dir string, debug bool, checkInterval time.Durat
 	}
 }
 
-const Busyfile = "Dog.busy"
+const DogBusy = "Dog.busy"
 
 func tick(ctx context.Context, dir string, debug bool) {
 	var file File
-	name := filepath.Join(dir, Busyfile)
+	name := filepath.Join(dir, DogBusy)
 	if err := ReadDeleteFile(name, debug, &file); err != nil {
 		if debug && !errors.Is(err, os.ErrNotExist) {
 			log.Printf("E! reading file %s error: %v", name, err)

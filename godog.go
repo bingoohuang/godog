@@ -84,7 +84,7 @@ var DefaultAction = func(dir string, debug bool, reasons []ReasonItem) {
 	log.Printf("program exit by godog, reason: %v", reasons)
 
 	data, _ := json.Marshal(ExitFile{
-		Pid:     os.Getgid(),
+		Pid:     os.Getpid(),
 		Time:    time.Now().Format(time.RFC3339),
 		Reasons: reasons,
 	})

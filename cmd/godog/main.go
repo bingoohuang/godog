@@ -8,6 +8,7 @@ import (
 
 func main() {
 	flag.Parse()
+	cgoDemo()
 
 	select {}
 }

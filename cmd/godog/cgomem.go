@@ -47,9 +47,9 @@ func cgoMemDemo(cgoMemSize uint64) {
 	}
 }
 
-func init() {
-	cgoMem := flag.String("cgo-mem", "", "cgo malloc memory size")
+var cgoMem = flag.String("cgo-mem", "", "cgo malloc memory size")
 
+func cgoDemo() {
 	if *cgoMem != "" {
 		cgoMemSize, err := humanize.ParseBytes(*cgoMem)
 		if err != nil {

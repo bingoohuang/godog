@@ -90,7 +90,7 @@ Watching program itself's memory and cpu, check thresholds, and take actions if 
 ## log
 
 ```sh
-DOG_DEBUG=1 DOG_INTERVAL=3s DOG_RSS=20MiB DOG_CPU=60 godog                       23:05:02
+$ DOG_DEBUG=1 DOG_INTERVAL=3s DOG_RSS=20MiB DOG_CPU=60 godog
 2024/08/08 23:06:39 current RSS: 2.8 MiB, CPU: 0.135749
 2024/08/08 23:06:42 current RSS: 2.9 MiB, CPU: 0.095724
 2024/08/08 23:06:44 read file Dog.busy: "{\"mem\":\"20MiB\"}\n"
@@ -108,8 +108,8 @@ DOG_DEBUG=1 DOG_INTERVAL=3s DOG_RSS=20MiB DOG_CPU=60 godog                      
 2024/08/08 23:07:10 program exit by godog, reason: [{RSS 连续 5 次超标 [21790720 21803008 21807104 21811200 21811200] 20971520 Dog.mem.82963.prof}]
 ```
 
-```log
-DOG_DEBUG=1 DOG_INTERVAL=3s DOG_RSS=20MiB DOG_CPU=60 godog                       23:11:23
+```sh
+$ DOG_DEBUG=1 DOG_INTERVAL=3s DOG_RSS=20MiB DOG_CPU=60 godog
 2024/08/08 23:11:35 current RSS: 2.7 MiB, CPU: 0.092319
 2024/08/08 23:11:36 current RSS: 2.8 MiB, CPU: 0.083957
 2024/08/08 23:11:41 current RSS: 2.9 MiB, CPU: 0.060528

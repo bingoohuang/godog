@@ -6,6 +6,8 @@ appVersion := 1.0.0
 goVersion := $(shell go version | sed 's/go version //'|sed 's/ /_/')
 # e.g. 2021-10-28T11:49:52+0800
 buildTime := $(shell date +%FT%T%z)
+# e.g. 20240808080013
+buildTimeCompact := $(shell date +%Y%m%d%H%M%S)
 # https://git-scm.com/docs/git-rev-list#Documentation/git-rev-list.txt-emaIem
 # e.g. ffd23d3@2022-04-06T18:07:14+08:00
 gitCommit := $(shell [ -f git.commit ] && cat git.commit || git log --format=format:'%h@%aI' -1)
@@ -165,4 +167,9 @@ dockerinstall:
 targz: git.commit
 	find . -name ".DS_Store" -delete
 	#find . -type f -name '\.*' -print
-	cd .. && rm -f ${app}.tar.gz && tar czf ${app}.tar.gz --exclude .git --exclude .idea  --no-xattrs --no-acls ${app} && ls -hl ${app}.tar.gz
+	cd .. && tar czf ${app}.${buildTimeCompact}.tar.gz --exclude .git --exclude .idea  --no-xattrs --no-acls ${app} && ls -hl ${app}.${buildTimeCompact}.tar.gz
+
+# BSSH_HOST=240f make bssh
+bssh: targz
+	bssh scp ../${app}.${buildTimeCompact}.tar.gz r:.
+	bssh 'rm -fr ${app} && tar zxf ${app}.${buildTimeCompact}.tar.gz && cd ${app} && make'

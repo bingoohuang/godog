@@ -50,14 +50,13 @@ func cgoMemDemo(cgoMemSize uint64) {
 var cgoMem = flag.String("cgo-mem", "", "cgo malloc memory size")
 
 func cgoDemo() {
-	if *cgoMem != "" {
-		cgoMemSize, err := humanize.ParseBytes(*cgoMem)
-		if err != nil {
-			log.Fatalf("cgo mem parse error: %v", err)
-		}
+	if *cgoMem == "" {
+		return
+	}
 
-		if cgoMemSize > 0 {
-			cgoMemDemo(cgoMemSize)
-		}
+	if cgoMemSize, err := humanize.ParseBytes(*cgoMem); err != nil {
+		log.Fatalf("parse cgoMem %s error: %v", *cgoMem, err)
+	} else if cgoMemSize > 0 {
+		cgoMemDemo(cgoMemSize)
 	}
 }

@@ -50,7 +50,7 @@ func tick(ctx context.Context, dir string, debug bool) {
 		if file.Cores == 0 {
 			file.Cores = int(math.Ceil(float64(file.Cpu) / 100))
 		}
-		go ControlCPULoad(ctx, file.Cores, file.Cpu/file.Cores, file.Lock)
+		go ControlCPULoad(ctx, file.Cores, file.Cpu/file.Cores, file.LockOsThread)
 	}
 }
 
@@ -66,10 +66,10 @@ func controlMem(ctx context.Context, fileMem string) {
 }
 
 type File struct {
-	Mem   string `json:"mem,omitempty"`   // 最大内存
-	Cores int    `json:"cores,omitempty"` // cpu 使用核数
-	Cpu   int    `json:"cpu,omitempty"`   // cpu 每核百分比, 0-100
-	Lock  bool   `json:"lock,omitempty"`  // lockOsThread: 是否在 CPU 耗用时锁定 OS 线程
+	Mem          string `json:"mem,omitempty"`          // 最大内存
+	Cores        int    `json:"cores,omitempty"`        // cpu 使用核数
+	Cpu          int    `json:"cpu,omitempty"`          // cpu 每核百分比, 0-100
+	LockOsThread bool   `json:"lockOsThread,omitempty"` // lockOsThread: 是否在 CPU 耗用时锁定 OS 线程
 }
 
 func ReadDeleteFile(filename string, debug bool, v any) error {
@@ -81,9 +81,6 @@ func ReadDeleteFile(filename string, debug bool, v any) error {
 		return fmt.Errorf("%s is a directory", filename)
 	}
 
-	if debug {
-		log.Printf("found file %s", filename)
-	}
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		_ = removeFile(filename, stat)
@@ -91,7 +88,7 @@ func ReadDeleteFile(filename string, debug bool, v any) error {
 	}
 
 	if debug {
-		log.Printf("Reading file %s: %q", filename, data)
+		log.Printf("read file %s: %q", filename, data)
 	}
 
 	if err := json.Unmarshal(data, v); err != nil {

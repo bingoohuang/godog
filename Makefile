@@ -172,4 +172,14 @@ targz: git.commit
 # BSSH_HOST=240f make bssh
 bssh: targz
 	bssh scp ../${app}.${buildTimeCompact}.tar.gz r:.
-	bssh 'rm -fr ${app} && tar zxf ${app}.${buildTimeCompact}.tar.gz && cd ${app} && make'
+	bssh 'rm -fr ${app} && tar zxf ${app}.${buildTimeCompact}.tar.gz && cd ${app} && make install bin_cp && cd .. && mv ${app} ${app}.${buildTimeCompact} && cd ${app}.${buildTimeCompact} && ls -hl ./built/* && md5sum ./built/* && readlink -f ./built/*'
+	mkdir -p ../${app}.${buildTimeCompact}.built
+	bssh scp r:${app}.${buildTimeCompact}/built ./${app}.${buildTimeCompact}.built/
+	# 显示大小
+	ls -hl ./${app}.${buildTimeCompact}.built/built/*
+	md5sum ./${app}.${buildTimeCompact}.built/built/*
+	# 显示完整路径
+	readlink -f ./${app}.${buildTimeCompact}.built/built/*
+
+bin_cp:
+	mkdir -p ./built && cp -r ${gobin}/${app}* ./built/

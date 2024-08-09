@@ -2,6 +2,10 @@
 
 Watching program itself's memory and cpu, check thresholds, and take actions if threshold condition satified.
 
+![示例图片](testdata/godog.png)
+
+[在线版本](https://excalidraw.com/#room=9b150c1ae8f50da5f7c0,DmAt2vj-2EkNypuJ-1nnSg)
+
 ## Sample
 
 - build: `make`

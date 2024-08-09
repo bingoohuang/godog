@@ -166,13 +166,17 @@ dockerinstall:
 
 targz: git.commit
 	find . -name ".DS_Store" -delete
-	#find . -type f -name '\.*' -print
 	cd .. && tar czf ${app}.${buildTimeCompact}.tar.gz --exclude .git --exclude .idea  --no-xattrs --no-acls ${app} && ls -hl ${app}.${buildTimeCompact}.tar.gz
+
+targz1: git.commit
+	find . -name ".DS_Store" -delete
+	cd .. && tar czf ${app}.tar.gz --exclude .git --exclude .idea  --no-xattrs --no-acls ${app} && ls -hl ${app}.tar.gz
+
 
 # BSSH_HOST=240f make bssh
 bssh: targz
 	bssh scp ../${app}.${buildTimeCompact}.tar.gz r:.
-	bssh 'rm -fr ${app} && tar zxf ${app}.${buildTimeCompact}.tar.gz && cd ${app} && make install bin_cp && cd .. && mv ${app} ${app}.${buildTimeCompact} && cd ${app}.${buildTimeCompact} && ls -hl ./built/* && md5sum ./built/* && readlink -f ./built/*'
+	bssh 'rm -fr ${app} && tar zxf ${app}.${buildTimeCompact}.tar.gz && rm -fr ${app}.${buildTimeCompact}.tar.gz && cd ${app} && make install bin_cp && cd .. && mv ${app} ${app}.${buildTimeCompact} && cd ${app}.${buildTimeCompact} && ls -hl ./built/* && md5sum ./built/* && readlink -f ./built/*'
 	mkdir -p ../${app}.${buildTimeCompact}.built
 	bssh scp r:${app}.${buildTimeCompact}/built ./${app}.${buildTimeCompact}.built/
 	# 显示大小
@@ -180,6 +184,22 @@ bssh: targz
 	md5sum ./${app}.${buildTimeCompact}.built/built/*
 	# 显示完整路径
 	readlink -f ./${app}.${buildTimeCompact}.built/built/*
-
+	@readlink -f ./${app}.${buildTimeCompact}.built/built/* | gocopy
 bin_cp:
 	mkdir -p ./built && cp -r ${gobin}/${app}* ./built/
+	upx ./built/*
+
+# BSSH_HOST=240f make bssh1
+bssh1: targz1
+	bssh scp ../${app}.tar.gz r:.
+	rm -fr ../${app}.tar.gz
+	bssh 'rm -fr ${app} && tar zxf ${app}.tar.gz && rm -fr ${app}.tar.gz && cd ${app} && make install bin_cp && ls -hl ./built/* && md5sum ./built/* && readlink -f ./built/*'
+	mkdir -p ../${app}.built
+	rm -fr ./${app}.built/
+	bssh scp r:${app}/built ./${app}.built/
+	# 显示大小
+	ls -hl ./${app}.built/built/*
+	md5sum ./${app}.built/built/*
+	# 显示完整路径
+	readlink -f ./${app}.built/built/*
+	@readlink -f ./${app}.built/built/* | gocopy
